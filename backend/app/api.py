@@ -1,9 +1,8 @@
 from fastapi import APIRouter, HTTPException, Query
 
 from app.agents import orchestrator
-from app.config import settings
 from app.services import supabase_db, telegram
-from app.services.bist import BISTService
+from app.services.bist import BISTService, load_bist100_tickers
 from app.services.scheduler import get_last_scan
 from app.services.scoring import compute_score
 
@@ -18,12 +17,14 @@ def ping() -> dict:
 
 @router.get("/stocks")
 def list_stocks() -> dict:
-    """Anlik fiyat + temel skor ile hisse listesi (skora gore sirali)."""
+    """Anlik fiyat + temel skor ile hisse listesi (skora gore sirali).
+
+    BIST 100'deki tum hisseler tek yfinance istegiyle cekilir.
+    """
+    tickers = supabase_db.get_scanned_tickers()
+    quotes = bist.get_batch_quotes(tickers)
     results = []
-    for ticker in settings.tickers:
-        quote = bist.get_quote(ticker)
-        if not quote:
-            continue
+    for ticker, quote in quotes.items():
         history = bist.get_history(ticker, period="3mo", interval="1d")
         analysis = compute_score(quote, history)
         results.append(
@@ -130,6 +131,91 @@ def remove_watchlist(ticker: str) -> dict:
 @router.get("/supabase/status")
 def supabase_status() -> dict:
     return {"ready": supabase_db.is_ready()}
+
+
+# --- Taranacak hisse listesi ---
+
+@router.get("/tickers")
+def list_tickers() -> dict:
+    """Taranacak hisse listesini dondurur (Supabase; bos ise config fallback)."""
+    tickers = supabase_db.get_scanned_tickers()
+    return {"count": len(tickers), "tickers": tickers, "source": "supabase" if supabase_db.is_ready() else "config"}
+
+
+@router.post("/tickers/batch")
+def batch_add_tickers(
+    tickers: list[str] | None = None,
+    from_bist100: bool = Query(False),
+    validate: bool = Query(True),
+) -> dict:
+    """Tarama listesine toplu hisse ekler.
+
+    - tickers verilirse onlari ekler (dogrulama ile).
+    - from_bist100=True ise data/bist100.json listesini dogrular ve ekler.
+    """
+    if not supabase_db.is_ready():
+        raise HTTPException(status_code=503, detail="Supabase bagli degil")
+
+    if from_bist100 or not tickers:
+        candidates = load_bist100_tickers()
+    else:
+        candidates = [_normalize(t) for t in tickers]
+
+    if not candidates:
+        raise HTTPException(status_code=400, detail="Eklenecek sembol yok")
+
+    valid: list[str] = []
+    invalid: list[str] = []
+    if validate:
+        valid, invalid = bist.validate_many(candidates)
+    else:
+        valid = candidates
+
+    added = 0
+    for t in valid:
+        if supabase_db.add_scanned_ticker(t):
+            added += 1
+
+    return {
+        "ok": added > 0,
+        "candidates": len(candidates),
+        "added": added,
+        "invalid": invalid,
+        "invalid_count": len(invalid),
+    }
+
+
+@router.post("/tickers/{ticker}")
+def add_ticker(ticker: str) -> dict:
+    """Tarama listesine hisse ekler (BIST sembolu dogrulanir)."""
+    ticker = _normalize(ticker)
+    quote = bist.get_quote(ticker)
+    if not quote:
+        raise HTTPException(status_code=404, detail=f"{ticker} icin veri bulunamadi (sembolu kontrol edin)")
+    if not supabase_db.is_ready():
+        raise HTTPException(status_code=503, detail="Supabase bagli degil")
+    row = supabase_db.add_scanned_ticker(ticker)
+    return {"ok": row is not None, "record": row, "name": quote["name"]}
+
+
+@router.delete("/tickers/{ticker}")
+def remove_ticker(ticker: str) -> dict:
+    """Tarama listesinden hisse cikarir."""
+    ticker = _normalize(ticker)
+    ok = supabase_db.remove_scanned_ticker(ticker)
+    return {"ok": ok}
+
+
+@router.get("/search")
+def search_stock(q: str = Query(..., min_length=1)) -> dict:
+    """BIST sembolu dogrular: 'THYAO' -> THYAO.IS, fiyat + isim dondurur."""
+    raw = q.strip().upper().replace(" ", "")
+    if not raw.endswith(".IS"):
+        raw = f"{raw}.IS"
+    quote = bist.get_quote(raw)
+    if not quote:
+        return {"found": False, "query": q, "suggested": raw}
+    return {"found": True, "ticker": raw, "name": quote["name"], "price": quote["price"]}
 
 
 # --- Telegram bildirim ---

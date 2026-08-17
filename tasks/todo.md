@@ -13,13 +13,14 @@ Kaynak video: https://www.youtube.com/watch?v=twkgnt7QT3g
 
 ## Fazlar
 - [x] Karar & plan onayı
-- [ ] Faz 0: Proje iskeleti (backend + frontend + env)
-- [ ] Faz 1: Çalışan MVP (liste + skor + detay)
-- [ ] Faz 2: Agent katmanı (news/sentiment/indicator/macro + orchestrator)
-- [ ] Faz 3: Supabase entegrasyonu
-- [ ] Faz 4: Telegram bildirim
-- [ ] Faz 5: Frontend cilası
-- [ ] Faz 6: GitHub yedek + yayın
+- [x] Faz 0: Proje iskeleti (backend + frontend + env)
+- [x] Faz 1: Çalışan MVP (liste + skor + detay)
+- [x] Faz 2: Agent katmanı (news/sentiment/indicator/macro + orchestrator)
+- [x] Faz 3: Supabase entegrasyonu
+- [x] Faz 4: Telegram bildirim
+- [x] Faz 5: Frontend cilası
+- [x] Faz 6: GitHub yedek + yayın
+- [x] BIST 100 tam liste: bist100.json + doğrulama + batch yükleme (91 hisse Supabase'de) + arama kutusu + "BIST 100'ü Ekle" butonu
 
 ## Notlar / Engeller
 - BIST için ücretsiz API sınırlı; yfinance .IS birincil, BigPara JSON alternatif.

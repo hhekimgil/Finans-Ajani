@@ -12,6 +12,7 @@ Konum: `C:\Users\user\Desktop\AI_Projelerim\Finans Ajanı`
 - [x] Faz 4: Telegram bildirim (@groq_hheki_bot → chat 8931340958)
 - [x] Faz 5: Canlı feed, piyasa özeti, lightweight-charts grafik
 - [x] Faz 6: GitHub'a push (hhekimgil/Finans-Ajani)
+- [x] BIST 100: `backend/data/bist100.json` (94 aday) + yfinance doğrulama + `POST /api/tickers/batch` → Supabase `scanned_tickers`'a **91 hisse** yüklendi (KOZAA/KOZAL/TRKCM geçersiz elendi). `/api/stocks` toplu `yf.download` ile 91 hisseyi ~13s listeliyor. Frontend: arama kutusu + "📥 BIST 100'ü Ekle" butonu.
 
 ## Bekleyen
 - [ ] Faz 6b: Canlıya alma (hosting) — adımlar hazır, yapılmadı

@@ -380,6 +380,16 @@ function App() {
   const [watchlist, setWatchlist] = useState([])
   const [history, setHistory] = useState([])
   const [sbReady, setSbReady] = useState(false)
+  const [toolMsg, setToolMsg] = useState(null)
+  const [bistLoading, setBistLoading] = useState(false)
+  const [query, setQuery] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [searching, setSearching] = useState(false)
+
+  const flash = (msg, isErr = false) => {
+    setToolMsg({ text: msg, isErr })
+    setTimeout(() => setToolMsg(null), 6000)
+  }
 
   const load = () => {
     fetch(`${API}/api/stocks`)
@@ -443,6 +453,55 @@ function App() {
       .catch(() => {})
   }
 
+  const addBist100 = () => {
+    if (!sbReady) {
+      flash('Supabase bağlı değil — önce supabase_schema.sql çalıştırılmalı', true)
+      return
+    }
+    setBistLoading(true)
+    fetch(`${API}/api/tickers/batch?from_bist100=true&validate=true`)
+      .then((r) => r.json().then((d) => ({ ok: r.ok, d })))
+      .then(({ ok, d }) => {
+        if (!ok) throw new Error(d.detail || 'Ekleme başarısız')
+        flash(`BIST 100 eklendi: ${d.added} hisse, ${d.invalid_count} geçersiz`)
+        load()
+      })
+      .catch((e) => flash(e.message, true))
+      .finally(() => setBistLoading(false))
+  }
+
+  const doSearch = (e) => {
+    const q = e.target.value
+    setQuery(q)
+    if (!q.trim()) {
+      setSearchResults([])
+      return
+    }
+    setSearching(true)
+    fetch(`${API}/api/search?q=${encodeURIComponent(q.trim())}`)
+      .then((r) => r.json())
+      .then((d) => setSearchResults(d.found ? [d] : []))
+      .catch(() => setSearchResults([]))
+      .finally(() => setSearching(false))
+  }
+
+  const addFound = (res) => {
+    if (!sbReady) {
+      flash('Supabase bağlı değil', true)
+      return
+    }
+    fetch(`${API}/api/tickers/${res.ticker}`, { method: 'POST' })
+      .then((r) => r.json().then((d) => ({ ok: r.ok, d })))
+      .then(({ ok, d }) => {
+        if (!ok) throw new Error(d.detail || 'Ekleme başarısız')
+        flash(`${res.name} (${res.ticker}) eklendi`)
+        setQuery('')
+        setSearchResults([])
+        load()
+      })
+      .catch((e) => flash(e.message, true))
+  }
+
   return (
     <div className="app">
       <header className="topbar">
@@ -463,8 +522,38 @@ function App() {
         <main>
           <div className="hero-line">
             <h1>Piyasa Taraması</h1>
-            <p className="dim">BIST hisseleri — yapay zeka analiz skoruna göre sıralı</p>
+            <p className="dim">{stocks.length} BIST hissesi — yapay zeka analiz skoruna göre sıralı</p>
           </div>
+
+          <div className="toolbar">
+            <div className="search-box">
+              <input
+                type="text"
+                value={query}
+                onChange={doSearch}
+                placeholder="Hisse ekle (örn. KCHOL, TUPRS, SASA)"
+                className="search-input"
+              />
+              {searching && <span className="dim small">aranıyor…</span>}
+              {searchResults.length > 0 && (
+                <div className="search-drop">
+                  {searchResults.map((r) => (
+                    <button key={r.ticker} className="search-item" onClick={() => addFound(r)}>
+                      <span className="ticker">{r.ticker.replace('.IS', '')}</span>
+                      <span className="name">{r.name}</span>
+                      <span className="dim mono">{fmtPrice(r.price)} ₺</span>
+                      <span className="add-hint">+ Ekle</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button className="refresh bist-btn" onClick={addBist100} disabled={bistLoading}>
+              {bistLoading ? 'Ekleniyor…' : '📥 BIST 100\'ü Ekle'}
+            </button>
+          </div>
+
+          {toolMsg && <div className={toolMsg.isErr ? 'error' : 'tool-msg'}>{toolMsg.text}</div>}
 
           {error && <div className="error">Sunucuya ulaşılamadı: {error}. Backend'i başlatın (uvicorn app.main:app).</div>}
 

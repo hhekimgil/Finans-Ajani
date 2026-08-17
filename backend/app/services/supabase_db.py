@@ -140,3 +140,55 @@ def get_latest_results(limit: int = 50) -> list:
     except Exception as e:  # noqa: BLE001
         logger.warning("scan_result okuma hatasi: %s", e)
         return []
+
+
+# --- Taranacak hisse listesi (frontend'den yonetilir) ---
+
+def get_scanned_tickers() -> list[str]:
+    """Supabase'deki taranacak hisse listesini dondurur.
+
+    Supabase'de liste varsa onu; yoksa BIST 100 aday listesini
+    (dogrulamasiz) fallback olarak kullanir. Dogrulama, fiyat
+    cekilirken/eklenirken yapilir; burada gecikme olmaz.
+    """
+    table = _table("scanned_tickers")
+    if table is not None:
+        try:
+            result = table.select("ticker").order("added_at", desc=True).execute()
+            if result.data:
+                return [r["ticker"] for r in result.data]
+        except Exception as e:  # noqa: BLE001
+            logger.warning("scanned_tickers okuma hatasi: %s", e)
+
+    from app.services.bist import load_bist100_tickers
+
+    candidates = load_bist100_tickers() or settings.tickers
+    return candidates
+
+
+def add_scanned_ticker(ticker: str) -> Optional[dict]:
+    table = _table("scanned_tickers")
+    if table is None:
+        return None
+    try:
+        existing = table.select("ticker").eq("ticker", ticker).execute()
+        if existing.data:
+            return existing.data[0]
+        row = {"ticker": ticker}
+        result = table.insert(row).execute()
+        return result.data[0] if result.data else None
+    except Exception as e:  # noqa: BLE001
+        logger.warning("scanned_tickers ekleme hatasi: %s", e)
+        return None
+
+
+def remove_scanned_ticker(ticker: str) -> bool:
+    table = _table("scanned_tickers")
+    if table is None:
+        return False
+    try:
+        table.delete().eq("ticker", ticker).execute()
+        return True
+    except Exception as e:  # noqa: BLE001
+        logger.warning("scanned_tickers silme hatasi: %s", e)
+        return False

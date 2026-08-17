@@ -38,10 +38,19 @@ create table if not exists public.scan_results (
 );
 create index if not exists scan_results_score_idx on public.scan_results (score desc);
 
+-- 4) Taranacak hisse listesi (frontend'den yönetilir)
+create table if not exists public.scanned_tickers (
+  id bigint generated always as identity primary key,
+  ticker text not null unique,
+  added_at timestamptz not null default now()
+);
+create index if not exists scanned_tickers_added_idx on public.scanned_tickers (added_at desc);
+
 -- RLS: geliştirme aşamasında herkese açık okuma/yazma (projeyi canlıya alırken kısıtlayın)
 alter table public.search_history enable row level security;
 alter table public.watchlist enable row level security;
 alter table public.scan_results enable row level security;
+alter table public.scanned_tickers enable row level security;
 
 drop policy if exists "public read" on public.search_history;
 drop policy if exists "public write" on public.search_history;
@@ -51,6 +60,9 @@ drop policy if exists "public read" on public.scan_results;
 drop policy if exists "public write" on public.scan_results;
 drop policy if exists "public insert" on public.scan_results;
 drop policy if exists "public update" on public.scan_results;
+drop policy if exists "public read" on public.scanned_tickers;
+drop policy if exists "public insert" on public.scanned_tickers;
+drop policy if exists "public delete" on public.scanned_tickers;
 
 create policy "public read" on public.search_history for select using (true);
 create policy "public write" on public.search_history for insert with check (true);
@@ -60,3 +72,6 @@ create policy "public write2" on public.watchlist for delete using (true);
 create policy "public read" on public.scan_results for select using (true);
 create policy "public insert" on public.scan_results for insert with check (true);
 create policy "public update" on public.scan_results for update using (true) with check (true);
+create policy "public read" on public.scanned_tickers for select using (true);
+create policy "public insert" on public.scanned_tickers for insert with check (true);
+create policy "public delete" on public.scanned_tickers for delete using (true);

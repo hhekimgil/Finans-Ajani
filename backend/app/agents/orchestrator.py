@@ -114,11 +114,13 @@ async def run(ticker: str) -> dict:
 
 
 async def scan_all() -> list[dict]:
-    """Config'deki tum hisseleri tarar."""
-    from app.config import settings
+    """Taranacak hisseleri Supabase'den okur (bos ise config fallback) ve tarar."""
+    from app.services.supabase_db import get_scanned_tickers
+
+    tickers = get_scanned_tickers()
 
     results = []
-    for ticker in settings.tickers:
+    for ticker in tickers:
         try:
             logger.info("Taranıyor: %s", ticker)
             result = await run(ticker)
