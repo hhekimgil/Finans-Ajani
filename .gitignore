@@ -12,7 +12,8 @@ node_modules/
 dist/
 
 # Veri
-backend/data/
+backend/data/notification_state.json
+backend/data/*.log
 
 # Loglar
 *.log
