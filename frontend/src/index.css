@@ -1,0 +1,35 @@
+:root {
+  --bg: #0a0e14;
+  --bg-soft: #11161f;
+  --panel: #151c27;
+  --panel-2: #1a2230;
+  --border: #232e3d;
+  --text: #c7d0da;
+  --text-h: #f2f5f8;
+  --dim: #7c8794;
+  --up: #00c853;
+  --down: #ff1744;
+  --accent: #2dd4bf;
+  --mono: ui-monospace, Consolas, 'Cascadia Code', monospace;
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  font: 15px/1.5 var(--sans);
+  color: var(--text);
+  background: var(--bg);
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(1200px 500px at 80% -10%, rgba(45, 212, 191, 0.08), transparent),
+    radial-gradient(1000px 400px at 10% -10%, rgba(45, 212, 191, 0.05), transparent),
+    var(--bg);
+  min-height: 100vh;
+}
+
+a { color: var(--accent); }
+code { font-family: var(--mono); }

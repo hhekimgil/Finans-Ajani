@@ -1,0 +1,23 @@
+# Ortam değişkenleri — ASLA commit edilmez
+backend/.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
+
+# Veri
+backend/data/
+
+# Loglar
+*.log
+vite.log
+
+# Sistem
+.DS_Store
+Thumbs.db
