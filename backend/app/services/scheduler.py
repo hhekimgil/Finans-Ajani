@@ -18,9 +18,10 @@ async def _scan_job() -> None:
     from app.agents import orchestrator
     from app.services import notifier
 
-    logger.info("Periyodik tarama basladi")
+    logger.info("Periyodik hizli tarama basladi")
     try:
-        results = await orchestrator.scan_all()
+        # LLM'siz hizli fiyat taramasi (91+ hisse ~15s) — derin analiz talep uzerine
+        results = orchestrator.scan_quick()
         global _last_scan
         _last_scan = {
             "results": results,

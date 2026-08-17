@@ -129,3 +129,43 @@ async def scan_all() -> list[dict]:
             logger.error("Tarama hatasi %s: %s", ticker, e)
     results.sort(key=lambda r: r.get("score", 0), reverse=True)
     return results
+
+
+def scan_quick() -> list[dict]:
+    """LLM'siz HIZLI fiyat taramasi — scheduler icin.
+
+    yfinance toplu cekimle tüm hisselerin fiyat/degisim/hacim bilgisini
+    alir, temel skoru hesaplar ve Supabase scan_results'a kaydeder.
+    Derin LLM analizi yapmaz (kullanici hisseye tiklayinca calisir).
+    """
+    from app.services.bist import BISTService
+    from app.services.scoring import compute_score
+    from app.services.supabase_db import get_scanned_tickers, is_ready, save_scan_result
+
+    tickers = get_scanned_tickers()
+    bist = BISTService()
+    quotes = bist.get_batch_quotes(tickers)
+
+    results = []
+    for ticker, quote in quotes.items():
+        history = bist.get_history(ticker, period="3mo", interval="1d")
+        analysis = compute_score(quote, history)
+        entry = {
+            "ticker": ticker,
+            "name": quote["name"],
+            "quote": quote,
+            "score": analysis["score"],
+            "level": analysis["level"],
+            "comment": "",
+            "news": {"sentiment": None, "score": None, "headlines": []},
+            "sentiment": {"sentiment": None, "score": None},
+            "indicators": {"rsi14": None},
+            "macro": {"rates": {}, "summary": ""},
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        if is_ready():
+            save_scan_result(entry)
+        results.append(entry)
+
+    results.sort(key=lambda r: r.get("score", 0), reverse=True)
+    return results
