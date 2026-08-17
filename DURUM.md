@@ -8,12 +8,12 @@ Konum: `C:\Users\user\Desktop\AI_Projelerim\Finans Ajanı`
 - [x] Faz 0: Backend (FastAPI) + Frontend (Vite/React) iskeleti
 - [x] Faz 1: BIST hisse listesi + temel skorlama + liste/detay
 - [x] Faz 2: 4 uzman agent + orchestrator (Ollama `qwen3-14b-tr`), periyodik tarama
+- [x] Faz 3: Supabase entegrasyonu — proje `Finans-Ajani` (`wsqavjwqwxcyxenakqoz`), 3 tablo (search_history/watchlist/scan_results), frontend'de ⭐ watchlist + son aramalar paneli, tarama sonuçları DB'ye kayıt
 - [x] Faz 4: Telegram bildirim (@groq_hheki_bot → chat 8931340958)
 - [x] Faz 5: Canlı feed, piyasa özeti, lightweight-charts grafik
 - [x] Faz 6: GitHub'a push (hhekimgil/Finans-Ajani)
 
 ## Bekleyen
-- [ ] Faz 3: Supabase bağlantısı — Project URL + anon key verilmedi, kod hazır
 - [ ] Faz 6b: Canlıya alma (hosting) — adımlar hazır, yapılmadı
 
 ## Çalıştırma
@@ -23,5 +23,8 @@ Konum: `C:\Users\user\Desktop\AI_Projelerim\Finans Ajanı`
 
 ## Notlar
 - Ollama bağlantı sorunu: `localhost` IPv6'ya çözümleniyor; `127.0.0.1` + `0.0.0.0` normalize edildi (llm.py `_get_client`)
-- `.env` dosyası `.gitignore`'da — GitHub'a gitmez
+- `.env` dosyası `.gitignore`'da — GitHub'a gitmez (Supabase/Telegram anahtarları içerir)
 - Ortam değişkeni `OLLAMA_HOST=0.0.0.0:11434` config'i override ediyor; llm.py bunu `127.0.0.1`'e çevirir
+- Supabase RLS politikaları "geliştirme aşaması herkese açık" modda — canlıya alırken kısıtlanmalı
+- Supabase şeması `backend/supabase_schema.sql` (upsert politikası insert+update olarak düzeltildi)
+- Supabase anahtarları `.env` içinde: `https://wsqavjwqwxcyxenakqoz.supabase.co`
