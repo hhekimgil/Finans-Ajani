@@ -161,11 +161,12 @@ function PriceChart({ data, up }) {
 }
 
 /* --- Hisse tablosu --- */
-function StockTable({ stocks, onSelect }) {
+function StockTable({ stocks, onSelect, watchlist = [], onToggleWatch, sbReady }) {
   return (
     <table className="stock-table">
       <thead>
         <tr>
+          <th></th>
           <th>Hisse</th>
           <th>Fiyat</th>
           <th>Değişim</th>
@@ -176,8 +177,14 @@ function StockTable({ stocks, onSelect }) {
       <tbody>
         {stocks.map((s) => {
           const up = (s.change_pct ?? 0) >= 0
+          const watched = watchlist.some((w) => w.ticker === s.ticker)
           return (
             <tr key={s.ticker} onClick={() => onSelect(s.ticker)} className="clickable">
+              <td onClick={(e) => { e.stopPropagation(); if (sbReady) onToggleWatch(s.ticker) }} className="watch-col">
+                <button className={`star ${watched ? 'active' : ''}`} title={watched ? 'Takipten çıkar' : 'Takibe ekle'} disabled={!sbReady}>
+                  {watched ? '★' : '☆'}
+                </button>
+              </td>
               <td>
                 <span className="ticker">{s.ticker.replace('.IS', '')}</span>
                 <span className="name">{s.name}</span>
@@ -370,6 +377,9 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [updatedAt, setUpdatedAt] = useState(null)
+  const [watchlist, setWatchlist] = useState([])
+  const [history, setHistory] = useState([])
+  const [sbReady, setSbReady] = useState(false)
 
   const load = () => {
     fetch(`${API}/api/stocks`)
@@ -386,11 +396,52 @@ function App() {
       .finally(() => setLoading(false))
   }
 
+  const loadWatchlist = () => {
+    fetch(`${API}/api/watchlist`)
+      .then((r) => r.json())
+      .then((d) => setWatchlist(d.watchlist || []))
+      .catch(() => {})
+  }
+
+  const loadHistory = () => {
+    fetch(`${API}/api/history?limit=10`)
+      .then((r) => r.json())
+      .then((d) => setHistory(d.history || []))
+      .catch(() => {})
+  }
+
   useEffect(() => {
     load()
+    fetch(`${API}/api/supabase/status`)
+      .then((r) => r.json())
+      .then((d) => {
+        setSbReady(d.ready)
+        if (d.ready) {
+          loadWatchlist()
+          loadHistory()
+        }
+      })
+      .catch(() => setSbReady(false))
     const timer = setInterval(load, 60000)
     return () => clearInterval(timer)
   }, [])
+
+  const openStock = (ticker) => {
+    setSelected(ticker)
+    if (sbReady) {
+      fetch(`${API}/api/history/${ticker}`, { method: 'POST' }).catch(() => {})
+      loadHistory()
+    }
+  }
+
+  const toggleWatchlist = (ticker) => {
+    if (!sbReady) return
+    const inList = watchlist.some((w) => w.ticker === ticker)
+    const opts = { method: inList ? 'DELETE' : 'POST' }
+    fetch(`${API}/api/watchlist/${ticker}`, opts)
+      .then(() => loadWatchlist())
+      .catch(() => {})
+  }
 
   return (
     <div className="app">
@@ -420,10 +471,62 @@ function App() {
           {!loading && stocks.length > 0 && <MarketSummary stocks={stocks} />}
 
           <div className="panel">
-            {loading ? <div className="loading">Yükleniyor…</div> : <StockTable stocks={stocks} onSelect={setSelected} />}
+            {loading ? <div className="loading">Yükleniyor…</div> : (
+              <StockTable stocks={stocks} onSelect={openStock} watchlist={watchlist} onToggleWatch={toggleWatchlist} sbReady={sbReady} />
+            )}
           </div>
+
+          {sbReady && (
+            <WatchlistPanel watchlist={watchlist} history={history} stocks={stocks} onSelect={openStock} onToggleWatch={toggleWatchlist} />
+          )}
         </main>
       )}
+    </div>
+  )
+}
+
+function WatchlistPanel({ watchlist, history, stocks, onSelect, onToggleWatch }) {
+  const priceOf = (t) => {
+    const s = stocks.find((x) => x.ticker === t)
+    return s ? `${fmtPrice(s.price)} ₺` : '—'
+  }
+  return (
+    <div className="wl-grid">
+      <div className="panel wl-panel">
+        <h3>Watchlist</h3>
+        {watchlist.length === 0 ? (
+          <p className="dim small">Hisse satırındaki ⭐ ile takibe ekleyin.</p>
+        ) : (
+          <ul className="wl-list">
+            {watchlist.map((w) => (
+              <li key={w.ticker}>
+                <button className="wl-name" onClick={() => onSelect(w.ticker)}>
+                  <span className="ticker">{w.ticker.replace('.IS', '')}</span>
+                  <span className="wl-price">{priceOf(w.ticker)}</span>
+                </button>
+                <button className="wl-remove" onClick={() => onToggleWatch(w.ticker)} title="Takipten çıkar">✕</button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <div className="panel wl-panel">
+        <h3>Son Aramalar</h3>
+        {history.length === 0 ? (
+          <p className="dim small">Henüz arama yapılmadı.</p>
+        ) : (
+          <ul className="wl-list">
+            {history.map((h, i) => (
+              <li key={`${h.ticker}-${i}`}>
+                <button className="wl-name" onClick={() => onSelect(h.ticker)}>
+                  <span className="ticker">{h.ticker.replace('.IS', '')}</span>
+                  <span className="dim small">{h.searched_at ? new Date(h.searched_at).toLocaleTimeString('tr-TR') : ''}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   )
 }

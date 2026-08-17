@@ -49,6 +49,8 @@ drop policy if exists "public read" on public.watchlist;
 drop policy if exists "public write" on public.watchlist;
 drop policy if exists "public read" on public.scan_results;
 drop policy if exists "public write" on public.scan_results;
+drop policy if exists "public insert" on public.scan_results;
+drop policy if exists "public update" on public.scan_results;
 
 create policy "public read" on public.search_history for select using (true);
 create policy "public write" on public.search_history for insert with check (true);
@@ -56,4 +58,5 @@ create policy "public read" on public.watchlist for select using (true);
 create policy "public write" on public.watchlist for insert with check (true);
 create policy "public write2" on public.watchlist for delete using (true);
 create policy "public read" on public.scan_results for select using (true);
-create policy "public write" on public.scan_results for upsert with check (true);
+create policy "public insert" on public.scan_results for insert with check (true);
+create policy "public update" on public.scan_results for update using (true) with check (true);
